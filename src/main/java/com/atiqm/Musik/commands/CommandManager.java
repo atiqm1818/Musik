@@ -3,6 +3,7 @@ package com.atiqm.Musik.commands;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
 import net.dv8tion.jda.api.interactions.commands.build.Commands;
@@ -50,6 +51,35 @@ public class CommandManager extends ListenerAdapter {
     //Command functions----------------------------------------------------------------------------------
     //TODO: Slash command for music recommendation
     public void recommend(SlashCommandInteractionEvent event){
+        //switch case to check if user picked a genre
+        //TODO: Research on shazam api / other music apis and learn to link it to my app
+        OptionMapping option = event.getOption("genre");
+        String genre = option.getAsString();
+        switch(genre){
+            case "rap":
+                //rap rec
+                break;
+            case "pop":
+                //pop rec
+                break;
+            case "kpop":
+                //kpop rec
+                break;
+            case "lofi":
+                //lofi rec
+                break;
+            case "rock":
+                //rock rec
+                break;
+            case "edm":
+                //edm rec
+                break;
+            case "classic":
+                //classical rec
+                break;
+            default:
+                break;
+        }
         event.reply("Its a lofi kinda day").queue();
     }
     //TODO: Slash command for rap battle
