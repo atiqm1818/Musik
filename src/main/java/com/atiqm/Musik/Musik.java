@@ -35,5 +35,6 @@ public class Musik{
         catch (LoginException e){
             System.out.println("ERROR: Bot token invalid");
         }
+
     }
 }
