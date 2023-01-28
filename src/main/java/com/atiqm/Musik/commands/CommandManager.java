@@ -35,19 +35,20 @@ public class CommandManager extends ListenerAdapter {
             .build();
     private static final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
             .build();
-    public static void clientCredentials(){
-        try{
+
+    public static void clientCredentials() {
+        try {
 
             final ClientCredentials clientCredentials = clientCredentialsRequest.execute();
             // Set access token for further "spotifyApi" object usage
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
 
             System.out.println("Expires in: " + clientCredentials.getExpiresIn());
-        }
-        catch (IOException | SpotifyWebApiException | ParseException e) {
+        } catch (IOException | SpotifyWebApiException | ParseException e) {
             System.out.println("Error: " + e.getMessage());
         }
     }
+
     //Command pickup-------------------------------------------------------------------------------------
     @Override
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
@@ -65,10 +66,11 @@ public class CommandManager extends ListenerAdapter {
                 break;
         }
     }
+
     //Registering commands-------------------------------------------------------------------------------
     @Override
     public void onGuildReady(GuildReadyEvent event) {
-        List<CommandData> commandData =new ArrayList<>();
+        List<CommandData> commandData = new ArrayList<>();
         //recommend command
         OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended")
                 .addChoice("Hip-Hop", "hip-hop")
@@ -94,23 +96,26 @@ public class CommandManager extends ListenerAdapter {
             }
         };
         Date today = new Date();
-        timer.scheduleAtFixedRate(task,new Date(today.getYear(), today.getMonth(), today.getDate(),9,0),86400000);
+        timer.scheduleAtFixedRate(task, new Date(today.getYear(), today.getMonth(), today.getDate(), 9, 0), 86400000);
         //spotify api connection
         clientCredentials();
     }
+
     //Command functions-----------------------------------------------------------------------------------------
-    public void recommend(SlashCommandInteractionEvent event) throws Exception{
+    public void recommend(SlashCommandInteractionEvent event) throws Exception {
         //switch case to check if user picked a genre
         OptionMapping option = event.getOption("genre");
         String genre = option.getAsString();
         event.reply(getRecs(genre)).queue();
     }
+
     //TODO: FIGURE OUT WUDAHELL WE DOIN FOR THIS
-    public void rateBars(SlashCommandInteractionEvent event){
+    public void rateBars(SlashCommandInteractionEvent event) {
         event.reply("moms spaghetti").queue();
     }
+
     //Spotify API Calls-----------------------------------------------------------------------------------------
-    public String getRecs(String genre){
+    public String getRecs(String genre) {
         GetRecommendationsRequest getRecommendationsRequest = spotifyApi.getRecommendations()
                 .seed_genres(genre)
                 .limit(1)
@@ -120,19 +125,20 @@ public class CommandManager extends ListenerAdapter {
 
             TrackSimplified[] recs = recommendations.getTracks();
             String artists = "";
-            for(int x = 0; x < recs[0].getArtists().length; x++){
+            for (int x = 0; x < recs[0].getArtists().length; x++) {
                 artists += recs[0].getArtists()[x].getName() + " ";
             }
-                return recs[0].getName() + " by " + artists;
+            return recs[0].getName() + " by " + artists;
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             System.out.println("Error: " + e.getMessage());
         }
         return "it did nto freaking work";
     }
+
     //Other Helper Methods / Functions-----------------------------------------------------------------------
-    public void dailySong(GuildReadyEvent event){
-        event.getGuild().getDefaultChannel().asTextChannel().sendMessage("Good Morning Gamers!\nToday's Jammer: "
-                + "song");
+    public void dailySong(GuildReadyEvent event) {
+        //get rando song
+        event.getGuild().getTextChannelsByName("general", true).get(0).sendMessage("Good Morning Gamers!\nToday's Jammer: "
+                + "<song>").queue();
     }
 }
-
