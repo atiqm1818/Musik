@@ -27,8 +27,8 @@ import java.util.*;
 
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
-    private static final String clientId = "c9d85716b5e94020b4955f1d66fa9cb4";
-    private static final String clientSecret = "43dbd8882b7f489cac80dee728b996b2";
+    private static final String clientId = "clientId";
+    private static final String clientSecret = "clientSecret";
     private static final SpotifyApi spotifyApi = new SpotifyApi.Builder()
             .setClientId(clientId)
             .setClientSecret(clientSecret)
