@@ -1,8 +1,12 @@
 package com.atiqm.Musik.commands;
 
+import com.atiqm.Musik.lavaplayer.PlayerManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
+import net.dv8tion.jda.api.entities.GuildVoiceState;
+import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.Widget;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -21,8 +25,6 @@ import se.michaelthelin.spotify.requests.authorization.client_credentials.Client
 import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.http.HttpRequest;
 import java.util.*;
 
 public class CommandManager extends ListenerAdapter {
@@ -61,9 +63,8 @@ public class CommandManager extends ListenerAdapter {
                     throw new RuntimeException(e);
                 }
                 break;
-            case "rate":
-                rateBars(event);
-                break;
+            case "play":
+                play(event);
         }
     }
 
@@ -71,6 +72,7 @@ public class CommandManager extends ListenerAdapter {
     @Override
     public void onGuildReady(GuildReadyEvent event) {
         List<CommandData> commandData = new ArrayList<>();
+        //TODO: Make it so that user can type any genre rather than forcing them to choose set genres and if genre doesnt exist, send a message saying so
         //recommend command
         OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended")
                 .addChoice("Hip-Hop", "hip-hop")
@@ -81,10 +83,9 @@ public class CommandManager extends ListenerAdapter {
                 .addChoice("Classical", "classical");
         commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
                 .addOptions(genre));
-        //rap battle command
-        OptionData lyrics = new OptionData(OptionType.STRING, "lyrics", "The bars you wrote");
-        commandData.add(Commands.slash("rate", "Have Musik rate your bars")
-                .addOptions(lyrics));
+        //play command
+        OptionData track = new OptionData(OptionType.STRING, "song", "URL, link, or name of the song you wish to play", true);
+        commandData.add(Commands.slash("play", "play a song").addOptions(track));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //Daily event for sending the song of the day
@@ -109,9 +110,29 @@ public class CommandManager extends ListenerAdapter {
         event.reply(getRecs(genre)).queue();
     }
 
-    //TODO: FIGURE OUT WUDAHELL WE DOIN FOR THIS
-    public void rateBars(SlashCommandInteractionEvent event) {
-        event.reply("moms spaghetti").queue();
+    public void play(SlashCommandInteractionEvent event){
+        Member member = event.getMember();
+        GuildVoiceState memberVoiceState = member.getVoiceState();
+        if(!memberVoiceState.inAudioChannel()){
+            event.reply("You need to be in a voice channel to run this command").queue();
+            return;
+        }
+
+        Member self = event.getGuild().getSelfMember();
+        GuildVoiceState selfVoiceState = self.getVoiceState();
+
+        if(!selfVoiceState.inAudioChannel()){
+            event.getGuild().getAudioManager().openAudioConnection(memberVoiceState.getChannel());
+        }
+        else{
+            if(selfVoiceState.getChannel() != memberVoiceState.getChannel()){
+                event.reply("need to be in the same channel as the bot").queue();
+                return;
+            }
+        }
+        PlayerManager playerManager = PlayerManager.get();
+        playerManager.play(event.getGuild(), event.getOption("song").getAsString());
+        event.reply("Musik is now in jammington city").queue();
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
@@ -137,7 +158,7 @@ public class CommandManager extends ListenerAdapter {
 
     //Other Helper Methods / Functions-----------------------------------------------------------------------
     public void dailySong(GuildReadyEvent event) {
-        //get rando song
+
         event.getGuild().getTextChannelsByName("general", true).get(0).sendMessage("Good Morning Gamers!\nToday's Jammer: "
                 + "<song>").queue();
     }
