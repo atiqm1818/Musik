@@ -1,5 +1,6 @@
 package com.atiqm.Musik.commands;
 
+import com.atiqm.Musik.lavaplayer.GuildMusicManager;
 import com.atiqm.Musik.lavaplayer.PlayerManager;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
@@ -65,9 +66,21 @@ public class CommandManager extends ListenerAdapter {
                 break;
             case "play":
                 play(event);
+                break;
+            case "skip":
+                skip(event);
+                break;
+            case "pause":
+                pause(event);
+                break;
+            case "resume":
+                resume(event);
+                break;
+            case "clear":
+                clear(event);
+                break;
         }
     }
-
     //Registering commands-------------------------------------------------------------------------------
     @Override
     public void onGuildReady(GuildReadyEvent event) {
@@ -86,6 +99,14 @@ public class CommandManager extends ListenerAdapter {
         //play command
         OptionData track = new OptionData(OptionType.STRING, "song", "URL, link, or name of the song you wish to play", true);
         commandData.add(Commands.slash("play", "play a song").addOptions(track));
+        //skip command
+        commandData.add(Commands.slash("skip", "skip current track"));
+        //pause command
+        commandData.add(Commands.slash("pause", "pause current track"));
+        //resume command
+        commandData.add(Commands.slash("resume", "resume paused track"));
+        //clear command
+        commandData.add(Commands.slash("clear", "clear the current queue and stop the currently playing track"));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //Daily event for sending the song of the day
@@ -111,16 +132,16 @@ public class CommandManager extends ListenerAdapter {
     }
 
     public void play(SlashCommandInteractionEvent event){
+        //check to make sure member is in a voice channel before running the command
         Member member = event.getMember();
         GuildVoiceState memberVoiceState = member.getVoiceState();
         if(!memberVoiceState.inAudioChannel()){
             event.reply("You need to be in a voice channel to run this command").queue();
             return;
         }
-
+        //checking bots state of seeing if it is in a voice channel or not
         Member self = event.getGuild().getSelfMember();
         GuildVoiceState selfVoiceState = self.getVoiceState();
-
         if(!selfVoiceState.inAudioChannel()){
             event.getGuild().getAudioManager().openAudioConnection(memberVoiceState.getChannel());
         }
@@ -130,9 +151,56 @@ public class CommandManager extends ListenerAdapter {
                 return;
             }
         }
+        //conditions checked, play the song provided by user
         PlayerManager playerManager = PlayerManager.get();
         playerManager.play(event.getGuild(), event.getOption("song").getAsString());
-        event.reply("Musik is now in jammington city").queue();
+        event.reply("Added your song to the queue").queue();
+    }
+
+    public void skip(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+        //skipping the song
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
+        event.reply("Song skipped->").queue();
+    }
+
+    public void pause(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+    }
+
+    public void resume(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+    }
+    public void clear(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        guildMusicManager.getTrackScheduler().getQueue().clear();
+        guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
+        event.reply("the queue has been cleared").queue();
+    }
+
+    public void checkVoiceState(SlashCommandInteractionEvent event){
+        //check to make sure member is in a voice channel before running the command
+        Member member = event.getMember();
+        GuildVoiceState memberVoiceState = member.getVoiceState();
+        if(!memberVoiceState.inAudioChannel()){
+            event.reply("You need to be in a voice channel to run this command.").queue();
+            return;
+        }
+        //checking bots state of seeing if it is in a voice channel or not
+        Member self = event.getGuild().getSelfMember();
+        GuildVoiceState selfVoiceState = self.getVoiceState();
+        if(!selfVoiceState.inAudioChannel()){
+            event.reply("I am not currently in a voice channel.").queue();
+            return;
+        }
+        //check to ensure bot is in same channel as user
+        if(memberVoiceState.getChannel() != selfVoiceState.getChannel()){
+            event.reply("Please join the same voice channel as me to use this command.").queue();
+            return;
+        }
+        return;
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
