@@ -2,6 +2,8 @@ package com.atiqm.Musik.commands;
 
 import com.atiqm.Musik.lavaplayer.GuildMusicManager;
 import com.atiqm.Musik.lavaplayer.PlayerManager;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
+import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import net.dv8tion.jda.api.JDA;
 import net.dv8tion.jda.api.JDABuilder;
 import net.dv8tion.jda.api.entities.Guild;
@@ -27,6 +29,8 @@ import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 
 import java.io.IOException;
 import java.util.*;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.LinkedBlockingQueue;
 
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
@@ -79,6 +83,12 @@ public class CommandManager extends ListenerAdapter {
             case "clear":
                 clear(event);
                 break;
+            case "np":
+                nowPlaying(event);
+                break;
+            case "queue":
+                queue(event);
+                break;
         }
     }
     //Registering commands-------------------------------------------------------------------------------
@@ -107,6 +117,10 @@ public class CommandManager extends ListenerAdapter {
         commandData.add(Commands.slash("resume", "resume paused track"));
         //clear command
         commandData.add(Commands.slash("clear", "clear the current queue and stop the currently playing track"));
+        //nowPlaying command
+        commandData.add(Commands.slash("np", "view the currently playing song"));
+        //queue command
+        commandData.add(Commands.slash("queue", "view the upcoming tracks that are queued"));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //Daily event for sending the song of the day
@@ -167,10 +181,16 @@ public class CommandManager extends ListenerAdapter {
 
     public void pause(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        guildMusicManager.getTrackScheduler().getPlayer().setPaused(true);
+        event.reply("Song paused").queue();
     }
 
     public void resume(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        guildMusicManager.getTrackScheduler().getPlayer().setPaused(false);
+        event.reply("Song resumed").queue();
     }
     public void clear(SlashCommandInteractionEvent event){
         checkVoiceState(event);
@@ -178,6 +198,26 @@ public class CommandManager extends ListenerAdapter {
         guildMusicManager.getTrackScheduler().getQueue().clear();
         guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
         event.reply("the queue has been cleared").queue();
+    }
+
+    public void nowPlaying(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        AudioTrackInfo info = guildMusicManager.getTrackScheduler().getPlayer().getPlayingTrack().getInfo();
+        event.reply("Now playing *" + info.title + "*").queue();
+    }
+
+    public void queue(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+        String reply = "";
+        int count = 1;
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        BlockingQueue<AudioTrack> list = guildMusicManager.getTrackScheduler().getQueue();
+        for(AudioTrack track : list){
+            reply += count + ". " + track.getInfo().title + "\n";
+            count++;
+        }
+        event.reply("Coming up next: \n" + reply).queue();
     }
 
     public void checkVoiceState(SlashCommandInteractionEvent event){
