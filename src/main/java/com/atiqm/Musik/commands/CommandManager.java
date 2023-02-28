@@ -4,12 +4,9 @@ import com.atiqm.Musik.lavaplayer.GuildMusicManager;
 import com.atiqm.Musik.lavaplayer.PlayerManager;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
-import net.dv8tion.jda.api.JDA;
-import net.dv8tion.jda.api.JDABuilder;
-import net.dv8tion.jda.api.entities.Guild;
+import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
-import net.dv8tion.jda.api.entities.Widget;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
@@ -30,19 +27,32 @@ import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
-import java.util.concurrent.LinkedBlockingQueue;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
-    private static final String clientId = "clientId";
-    private static final String clientSecret = "clientSecret";
+    private static Dotenv config = Dotenv.configure().load();
+    private static final String clientId = config.get("CLIENT_ID");
+    private static final String clientSecret = config.get("CLIENT_SECRET");
     private static final SpotifyApi spotifyApi = new SpotifyApi.Builder()
             .setClientId(clientId)
             .setClientSecret(clientSecret)
             .build();
     private static final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
             .build();
-
+    private static final List<String> spotifyGenres = new ArrayList<>(Arrays.asList("acoustic", "afrobeat", "alt-rock", "alternative", "ambient", "anime",
+            "black-metal", "bluegrass", "blues", "bossanova", "brazil", "breakbeat", "british", "cantopop", "chicago-house",
+            "children", "chill", "classical", "club", "comedy", "country", "dance", "dancehall", "death-metal", "deep-house",
+            "detroit-techno", "disco", "disney", "drum-and-bass", "dub", "dubstep", "edm", "electro", "electronic",
+            "emo", "folk", "forro", "french", "funk", "garage", "german", "gospel", "goth", "grindcore", "groove", "grunge",
+            "guitar", "happy", "hard-rock", "hardcore", "hardstyle", "heavy-metal", "hip-hop", "holidays", "honky-tonk", "house",
+            "idm", "indian", "indie", "indie-pop", "industrial", "iranian", "j-dance", "j-idol", "j-pop", "j-rock", "jazz", "k-pop",
+            "kids", "latin", "latino", "malay", "mandopop", "metal", "metal-misc", "metalcore", "minimal-techno", "movies", "mpb", "new-age",
+            "new-release", "opera", "pagode", "party", "philippines-opm", "piano", "pop", "pop-film", "post-dubstep", "power-pop",
+            "progressive-house", "psych-rock", "punk", "punk-rock", "r-n-b", "rainy-day", "reggae",
+            "reggaeton", "road-trip", "rock", "rock-n-roll", "rockabilly", "romance", "sad", "salsa", "samba", "sertanejo", "show-tunes",
+            "singer-songwriter", "ska", "sleep", "songwriter", "soul", "soundtracks", "spanish", "study",
+            "summer", "swedish", "synth-pop", "tango", "techno", "trance", "trip-hop", "turkish", "work-out", "world-music"));
     public static void clientCredentials() {
         try {
 
@@ -89,21 +99,17 @@ public class CommandManager extends ListenerAdapter {
             case "queue":
                 queue(event);
                 break;
+            case "loop":
+                loop(event);
+                break;
         }
     }
     //Registering commands-------------------------------------------------------------------------------
     @Override
     public void onGuildReady(GuildReadyEvent event) {
         List<CommandData> commandData = new ArrayList<>();
-        //TODO: Make it so that user can type any genre rather than forcing them to choose set genres and if genre doesnt exist, send a message saying so
         //recommend command
-        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended")
-                .addChoice("Hip-Hop", "hip-hop")
-                .addChoice("Pop", "pop")
-                .addChoice("K-pop", "k-pop")
-                .addChoice("Rock", "rock")
-                .addChoice("EDM", "edm")
-                .addChoice("Classical", "classical");
+        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
         commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
                 .addOptions(genre));
         //play command
@@ -121,8 +127,12 @@ public class CommandManager extends ListenerAdapter {
         commandData.add(Commands.slash("np", "view the currently playing song"));
         //queue command
         commandData.add(Commands.slash("queue", "view the upcoming tracks that are queued"));
+        //loop command
+        commandData.add(Commands.slash("loop", "loop the current track or stop the current loop"));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
+        //spotify api connection
+        clientCredentials();
         //Daily event for sending the song of the day
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
@@ -133,16 +143,24 @@ public class CommandManager extends ListenerAdapter {
         };
         Date today = new Date();
         timer.scheduleAtFixedRate(task, new Date(today.getYear(), today.getMonth(), today.getDate(), 9, 0), 86400000);
-        //spotify api connection
-        clientCredentials();
     }
 
     //Command functions-----------------------------------------------------------------------------------------
+    //TODO: Clean up responses for each command, make them well formatted and organized
     public void recommend(SlashCommandInteractionEvent event) throws Exception {
         //switch case to check if user picked a genre
         OptionMapping option = event.getOption("genre");
         String genre = option.getAsString();
-        event.reply(getRecs(genre)).queue();
+        if(genre.trim().equals("")){
+            genre = "random";
+        }
+        String genreApiCall = getRecs(genre.trim().toLowerCase());
+        if(genreApiCall.equals("invalid genre")){
+            event.reply("Invalid genre entered").queue();
+        }
+        else{
+            event.reply(genreApiCall).queue();
+        }
     }
 
     public void play(SlashCommandInteractionEvent event){
@@ -217,7 +235,24 @@ public class CommandManager extends ListenerAdapter {
             reply += count + ". " + track.getInfo().title + "\n";
             count++;
         }
-        event.reply("Coming up next: \n" + reply).queue();
+        if(reply.equals("")){
+            event.reply("No songs are queued up").queue();
+        }
+        else{
+            event.reply("Coming up next: \n" + reply).queue();
+        }
+    }
+    public void loop(SlashCommandInteractionEvent event){
+        checkVoiceState(event);
+        GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        boolean looping = !guildMusicManager.getTrackScheduler().isRepeating();
+        guildMusicManager.getTrackScheduler().setRepeating(looping);
+        if(looping){
+            event.reply(":repeat: Looping").queue();
+        }
+        else{
+            event.reply(":x:Stopped loop").queue();
+        }
     }
 
     public void checkVoiceState(SlashCommandInteractionEvent event){
@@ -245,13 +280,18 @@ public class CommandManager extends ListenerAdapter {
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
     public String getRecs(String genre) {
+        if(genre.equals("random")){
+            genre = spotifyGenres.get(ThreadLocalRandom.current().nextInt(0, spotifyGenres.size()));
+        }
+        if(!spotifyGenres.contains(genre)){
+            return "invalid genre";
+        }
         GetRecommendationsRequest getRecommendationsRequest = spotifyApi.getRecommendations()
                 .seed_genres(genre)
                 .limit(1)
                 .build();
         try {
             final Recommendations recommendations = getRecommendationsRequest.execute();
-
             TrackSimplified[] recs = recommendations.getTracks();
             String artists = "";
             for (int x = 0; x < recs[0].getArtists().length; x++) {
@@ -261,13 +301,13 @@ public class CommandManager extends ListenerAdapter {
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             System.out.println("Error: " + e.getMessage());
         }
-        return "it did nto freaking work";
+        return "Get Recommendations Command Error";
     }
 
     //Other Helper Methods / Functions-----------------------------------------------------------------------
     public void dailySong(GuildReadyEvent event) {
 
         event.getGuild().getTextChannelsByName("general", true).get(0).sendMessage("Good Morning Gamers!\nToday's Jammer: "
-                + "<song>").queue();
+                + getRecs("random")).queue();
     }
 }
