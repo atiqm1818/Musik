@@ -31,7 +31,7 @@ import java.util.concurrent.ThreadLocalRandom;
 
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
-    private static Dotenv config = Dotenv.configure().load();
+    private static final Dotenv config = Dotenv.configure().load();
     private static final String clientId = config.get("CLIENT_ID");
     private static final String clientSecret = config.get("CLIENT_SECRET");
     private static final SpotifyApi spotifyApi = new SpotifyApi.Builder()
@@ -53,6 +53,9 @@ public class CommandManager extends ListenerAdapter {
             "reggaeton", "road-trip", "rock", "rock-n-roll", "rockabilly", "romance", "sad", "salsa", "samba", "sertanejo", "show-tunes",
             "singer-songwriter", "ska", "sleep", "songwriter", "soul", "soundtracks", "spanish", "study",
             "summer", "swedish", "synth-pop", "tango", "techno", "trance", "trip-hop", "turkish", "work-out", "world-music"));
+    //backticks for formatted output
+    private static final String blockQuote = ">>> ";
+    private static final String bold = "**";
     public static void clientCredentials() {
         try {
 
@@ -71,37 +74,21 @@ public class CommandManager extends ListenerAdapter {
     public void onSlashCommandInteraction(SlashCommandInteractionEvent event) {
         String cmd = event.getName().toLowerCase();
         switch (cmd) {
-            case "recommend":
+            case "recommend" -> {
                 try {
                     recommend(event);
                 } catch (Exception e) {
                     throw new RuntimeException(e);
                 }
-                break;
-            case "play":
-                play(event);
-                break;
-            case "skip":
-                skip(event);
-                break;
-            case "pause":
-                pause(event);
-                break;
-            case "resume":
-                resume(event);
-                break;
-            case "clear":
-                clear(event);
-                break;
-            case "np":
-                nowPlaying(event);
-                break;
-            case "queue":
-                queue(event);
-                break;
-            case "loop":
-                loop(event);
-                break;
+            }
+            case "play" -> play(event);
+            case "skip" -> skip(event);
+            case "pause" -> pause(event);
+            case "resume" -> resume(event);
+            case "clear" -> clear(event);
+            case "np" -> nowPlaying(event);
+            case "queue" -> queue(event);
+            case "loop" -> loop(event);
         }
     }
     //Registering commands-------------------------------------------------------------------------------
@@ -147,7 +134,7 @@ public class CommandManager extends ListenerAdapter {
 
     //Command functions-----------------------------------------------------------------------------------------
     //TODO: Clean up responses for each command, make them well formatted and organized
-    public void recommend(SlashCommandInteractionEvent event) throws Exception {
+    public void recommend(SlashCommandInteractionEvent event){
         //switch case to check if user picked a genre
         OptionMapping option = event.getOption("genre");
         String genre = option.getAsString();
@@ -156,10 +143,10 @@ public class CommandManager extends ListenerAdapter {
         }
         String genreApiCall = getRecs(genre.trim().toLowerCase());
         if(genreApiCall.equals("invalid genre")){
-            event.reply("Invalid genre entered").queue();
+            event.reply( blockQuote + bold + "Invalid genre entered" + bold).setEphemeral(true).queue();
         }
         else{
-            event.reply(genreApiCall).queue();
+            event.reply(blockQuote + bold + genreApiCall + bold).queue();
         }
     }
 
@@ -168,7 +155,7 @@ public class CommandManager extends ListenerAdapter {
         Member member = event.getMember();
         GuildVoiceState memberVoiceState = member.getVoiceState();
         if(!memberVoiceState.inAudioChannel()){
-            event.reply("You need to be in a voice channel to run this command").queue();
+            event.reply(blockQuote + "You need to be in a voice channel to run this command").setEphemeral(true).queue();
             return;
         }
         //checking bots state of seeing if it is in a voice channel or not
@@ -179,14 +166,14 @@ public class CommandManager extends ListenerAdapter {
         }
         else{
             if(selfVoiceState.getChannel() != memberVoiceState.getChannel()){
-                event.reply("need to be in the same channel as the bot").queue();
+                event.reply(blockQuote + "You need to be in the same channel as the bot").setEphemeral(true).queue();
                 return;
             }
         }
         //conditions checked, play the song provided by user
         PlayerManager playerManager = PlayerManager.get();
         playerManager.play(event.getGuild(), event.getOption("song").getAsString());
-        event.reply("Added your song to the queue").queue();
+        event.reply(blockQuote + ":arrow_forward: Added your song to the queue").queue();
     }
 
     public void skip(SlashCommandInteractionEvent event){
@@ -194,35 +181,35 @@ public class CommandManager extends ListenerAdapter {
         //skipping the song
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
-        event.reply("Song skipped->").queue();
+        event.reply(blockQuote + ":track_next: Song skipped").queue();
     }
 
     public void pause(SlashCommandInteractionEvent event){
         checkVoiceState(event);
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getPlayer().setPaused(true);
-        event.reply("Song paused").queue();
+        event.reply(blockQuote + ":pause_button: Song paused").queue();
     }
 
     public void resume(SlashCommandInteractionEvent event){
         checkVoiceState(event);
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getPlayer().setPaused(false);
-        event.reply("Song resumed").queue();
+        event.reply(blockQuote + ":play_pause: Song resumed").queue();
     }
     public void clear(SlashCommandInteractionEvent event){
         checkVoiceState(event);
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getQueue().clear();
         guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
-        event.reply("the queue has been cleared").queue();
+        event.reply(blockQuote + "the queue has been cleared").queue();
     }
 
     public void nowPlaying(SlashCommandInteractionEvent event){
         checkVoiceState(event);
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         AudioTrackInfo info = guildMusicManager.getTrackScheduler().getPlayer().getPlayingTrack().getInfo();
-        event.reply("Now playing *" + info.title + "*").queue();
+        event.reply(blockQuote + "Now playing " + bold + info.title + bold).queue();
     }
 
     public void queue(SlashCommandInteractionEvent event){
@@ -236,10 +223,10 @@ public class CommandManager extends ListenerAdapter {
             count++;
         }
         if(reply.equals("")){
-            event.reply("No songs are queued up").queue();
+            event.reply(blockQuote + "No songs are queued up").queue();
         }
         else{
-            event.reply("Coming up next: \n" + reply).queue();
+            event.reply(blockQuote + "Coming up next: \n" + bold + reply + bold).queue();
         }
     }
     public void loop(SlashCommandInteractionEvent event){
@@ -248,10 +235,10 @@ public class CommandManager extends ListenerAdapter {
         boolean looping = !guildMusicManager.getTrackScheduler().isRepeating();
         guildMusicManager.getTrackScheduler().setRepeating(looping);
         if(looping){
-            event.reply(":repeat: Looping").queue();
+            event.reply(blockQuote + ":repeat: Looping").queue();
         }
         else{
-            event.reply(":x:Stopped loop").queue();
+            event.reply(blockQuote + ":x: Stopped loop").queue();
         }
     }
 
@@ -260,22 +247,20 @@ public class CommandManager extends ListenerAdapter {
         Member member = event.getMember();
         GuildVoiceState memberVoiceState = member.getVoiceState();
         if(!memberVoiceState.inAudioChannel()){
-            event.reply("You need to be in a voice channel to run this command.").queue();
+            event.reply(blockQuote + "You need to be in a voice channel to run this command.").setEphemeral(true).queue();
             return;
         }
         //checking bots state of seeing if it is in a voice channel or not
         Member self = event.getGuild().getSelfMember();
         GuildVoiceState selfVoiceState = self.getVoiceState();
         if(!selfVoiceState.inAudioChannel()){
-            event.reply("I am not currently in a voice channel.").queue();
+            event.reply(blockQuote + "I am not currently in a voice channel.").setEphemeral(true).queue();
             return;
         }
         //check to ensure bot is in same channel as user
         if(memberVoiceState.getChannel() != selfVoiceState.getChannel()){
-            event.reply("Please join the same voice channel as me to use this command.").queue();
-            return;
+            event.reply(blockQuote + "Please join the same voice channel as me to use this command.").setEphemeral(true).queue();
         }
-        return;
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
@@ -306,8 +291,7 @@ public class CommandManager extends ListenerAdapter {
 
     //Other Helper Methods / Functions-----------------------------------------------------------------------
     public void dailySong(GuildReadyEvent event) {
-
-        event.getGuild().getTextChannelsByName("general", true).get(0).sendMessage("Good Morning Gamers!\nToday's Jammer: "
+        event.getGuild().getDefaultChannel().asTextChannel().sendMessage(blockQuote + "Good Morning Gamers!\nToday's Jammer: "
                 + getRecs("random")).queue();
     }
 }
