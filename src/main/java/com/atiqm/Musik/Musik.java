@@ -14,7 +14,10 @@ public class Musik{
     private final ShardManager shardManager;
     private final Dotenv config;
     public Musik() throws LoginException {
-        config = Dotenv.configure().load();
+        config = Dotenv.configure()
+                .directory("src/main/assets")
+                .filename(".env")
+                .load();
         String token = config.get("TOKEN");
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(token)
                 .setStatus(OnlineStatus.ONLINE)

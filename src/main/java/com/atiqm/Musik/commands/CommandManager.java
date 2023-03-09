@@ -6,10 +6,13 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
+import net.dv8tion.jda.api.entities.Invite;
 import net.dv8tion.jda.api.entities.Member;
+import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
 import net.dv8tion.jda.api.events.interaction.command.SlashCommandInteractionEvent;
 import net.dv8tion.jda.api.hooks.ListenerAdapter;
+import net.dv8tion.jda.api.interactions.commands.Command;
 import net.dv8tion.jda.api.interactions.commands.OptionMapping;
 import net.dv8tion.jda.api.interactions.commands.OptionType;
 import net.dv8tion.jda.api.interactions.commands.build.CommandData;
@@ -24,6 +27,7 @@ import se.michaelthelin.spotify.model_objects.specification.TrackSimplified;
 import se.michaelthelin.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 
+import javax.swing.text.html.Option;
 import java.io.IOException;
 import java.util.*;
 import java.util.concurrent.BlockingQueue;
@@ -38,7 +42,7 @@ public class CommandManager extends ListenerAdapter {
             .setClientId(clientId)
             .setClientSecret(clientSecret)
             .build();
-    private static final ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
+    private static ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
             .build();
     private static final List<String> spotifyGenres = new ArrayList<>(Arrays.asList("acoustic", "afrobeat", "alt-rock", "alternative", "ambient", "anime",
             "black-metal", "bluegrass", "blues", "bossanova", "brazil", "breakbeat", "british", "cantopop", "chicago-house",
@@ -53,13 +57,14 @@ public class CommandManager extends ListenerAdapter {
             "reggaeton", "road-trip", "rock", "rock-n-roll", "rockabilly", "romance", "sad", "salsa", "samba", "sertanejo", "show-tunes",
             "singer-songwriter", "ska", "sleep", "songwriter", "soul", "soundtracks", "spanish", "study",
             "summer", "swedish", "synth-pop", "tango", "techno", "trance", "trip-hop", "turkish", "work-out", "world-music"));
+    //Channel for daily song output
+    private static long dailyAlertChannelId;
     //backticks for formatted output
     private static final String blockQuote = ">>> ";
     private static final String bold = "**";
     public static void clientCredentials() {
         try {
-
-            final ClientCredentials clientCredentials = clientCredentialsRequest.execute();
+            ClientCredentials clientCredentials = clientCredentialsRequest.execute();
             // Set access token for further "spotifyApi" object usage
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
 
@@ -89,6 +94,7 @@ public class CommandManager extends ListenerAdapter {
             case "np" -> nowPlaying(event);
             case "queue" -> queue(event);
             case "loop" -> loop(event);
+            case "setAlertsChannel" -> setAlertsChannel(event);
         }
     }
     //Registering commands-------------------------------------------------------------------------------
@@ -101,7 +107,8 @@ public class CommandManager extends ListenerAdapter {
                 .addOptions(genre));
         //play command
         OptionData track = new OptionData(OptionType.STRING, "song", "URL, link, or name of the song you wish to play", true);
-        commandData.add(Commands.slash("play", "play a song").addOptions(track));
+        commandData.add(Commands.slash("play", "play a song")
+                .addOptions(track));
         //skip command
         commandData.add(Commands.slash("skip", "skip current track"));
         //pause command
@@ -116,6 +123,16 @@ public class CommandManager extends ListenerAdapter {
         commandData.add(Commands.slash("queue", "view the upcoming tracks that are queued"));
         //loop command
         commandData.add(Commands.slash("loop", "loop the current track or stop the current loop"));
+        //setAlertsChannel command
+        //TODO: fix this.choices being null when adding channels as options
+        OptionData channel = new OptionData(OptionType.CHANNEL, "channel", "channel you would like Musik to send all his daily alerts in.", true);
+        List<TextChannel> channels = event.getGuild().getTextChannels();
+        System.out.println(channels);
+        for(TextChannel c : channels){
+            channel.addChoice(c.getName(), c.getId());
+        }
+        commandData.add(Commands.slash("setAlertsChannel", "Pick the channel to have Musik output his daily recommendations.")
+                .addOptions(channel));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //spotify api connection
@@ -133,7 +150,6 @@ public class CommandManager extends ListenerAdapter {
     }
 
     //Command functions-----------------------------------------------------------------------------------------
-    //TODO: Clean up responses for each command, make them well formatted and organized
     public void recommend(SlashCommandInteractionEvent event){
         //switch case to check if user picked a genre
         OptionMapping option = event.getOption("genre");
@@ -200,6 +216,7 @@ public class CommandManager extends ListenerAdapter {
     public void clear(SlashCommandInteractionEvent event){
         checkVoiceState(event);
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
+        guildMusicManager.getTrackScheduler().setRepeating(false);
         guildMusicManager.getTrackScheduler().getQueue().clear();
         guildMusicManager.getTrackScheduler().getPlayer().stopTrack();
         event.reply(blockQuote + "the queue has been cleared").queue();
@@ -263,8 +280,14 @@ public class CommandManager extends ListenerAdapter {
         }
     }
 
+    public void setAlertsChannel(SlashCommandInteractionEvent event){
+        dailyAlertChannelId = event.getOption("channel").getAsLong();
+    }
+
     //Spotify API Calls-----------------------------------------------------------------------------------------
     public String getRecs(String genre) {
+        //TODO: check to see if token is expired
+
         if(genre.equals("random")){
             genre = spotifyGenres.get(ThreadLocalRandom.current().nextInt(0, spotifyGenres.size()));
         }
@@ -291,7 +314,7 @@ public class CommandManager extends ListenerAdapter {
 
     //Other Helper Methods / Functions-----------------------------------------------------------------------
     public void dailySong(GuildReadyEvent event) {
-        event.getGuild().getDefaultChannel().asTextChannel().sendMessage(blockQuote + "Good Morning Gamers!\nToday's Jammer: "
+        event.getGuild().getTextChannelById(dailyAlertChannelId).sendMessage(blockQuote + "Good Morning Gamers!\nToday's Jammer: "
                 + getRecs("random")).queue();
     }
 }
