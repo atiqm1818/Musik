@@ -28,8 +28,10 @@ import se.michaelthelin.spotify.requests.authorization.client_credentials.Client
 import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 
 import javax.swing.text.html.Option;
+import java.awt.*;
 import java.io.IOException;
 import java.util.*;
+import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -94,7 +96,7 @@ public class CommandManager extends ListenerAdapter {
             case "np" -> nowPlaying(event);
             case "queue" -> queue(event);
             case "loop" -> loop(event);
-            case "setAlertsChannel" -> setAlertsChannel(event);
+            case "sac" -> setAlertsChannel(event);
         }
     }
     //Registering commands-------------------------------------------------------------------------------
@@ -123,20 +125,22 @@ public class CommandManager extends ListenerAdapter {
         commandData.add(Commands.slash("queue", "view the upcoming tracks that are queued"));
         //loop command
         commandData.add(Commands.slash("loop", "loop the current track or stop the current loop"));
-        //setAlertsChannel command
-        //TODO: fix this.choices being null when adding channels as options
-        OptionData channel = new OptionData(OptionType.CHANNEL, "channel", "channel you would like Musik to send all his daily alerts in.", true);
+        //sac (set alerts channel) command
         List<TextChannel> channels = event.getGuild().getTextChannels();
-        System.out.println(channels);
+        List<Command.Choice> choices = new ArrayList<>();
         for(TextChannel c : channels){
-            channel.addChoice(c.getName(), c.getId());
+            choices.add(new Command.Choice(c.getName(), c.getId()));
         }
-        commandData.add(Commands.slash("setAlertsChannel", "Pick the channel to have Musik output his daily recommendations.")
+        OptionData channel = new OptionData(OptionType.STRING, "channel", "channel you would like Musik to send all his daily alerts in.", true)
+                .addChoices(choices);
+        commandData.add(Commands.slash("sac", "Pick the channel to have Musik output his daily recommendations.")
                 .addOptions(channel));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //spotify api connection
         clientCredentials();
+        //assigning default channel for daily song event
+        dailyAlertChannelId = event.getGuild().getDefaultChannel().getIdLong();
         //Daily event for sending the song of the day
         Timer timer = new Timer();
         TimerTask task = new TimerTask() {
@@ -282,6 +286,7 @@ public class CommandManager extends ListenerAdapter {
 
     public void setAlertsChannel(SlashCommandInteractionEvent event){
         dailyAlertChannelId = event.getOption("channel").getAsLong();
+        event.reply(blockQuote + "Musik will now send all his daily alerts in " + event.getGuild().getTextChannelById(dailyAlertChannelId).getName()).queue();
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
@@ -302,6 +307,9 @@ public class CommandManager extends ListenerAdapter {
             final Recommendations recommendations = getRecommendationsRequest.execute();
             TrackSimplified[] recs = recommendations.getTracks();
             String artists = "";
+            if(recs.length == 0){
+                return "Get Recommendations Command Length Error";
+            }
             for (int x = 0; x < recs[0].getArtists().length; x++) {
                 artists += recs[0].getArtists()[x].getName() + " ";
             }
@@ -309,7 +317,7 @@ public class CommandManager extends ListenerAdapter {
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             System.out.println("Error: " + e.getMessage());
         }
-        return "Get Recommendations Command Error";
+        return "Get Recommendations Command API Call Error";
     }
 
     //Other Helper Methods / Functions-----------------------------------------------------------------------
