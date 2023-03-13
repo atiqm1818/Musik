@@ -20,6 +20,7 @@ import net.dv8tion.jda.api.interactions.commands.build.Commands;
 import net.dv8tion.jda.api.interactions.commands.build.OptionData;
 import org.apache.hc.core5.http.ParseException;
 import se.michaelthelin.spotify.SpotifyApi;
+import se.michaelthelin.spotify.SpotifyHttpManager;
 import se.michaelthelin.spotify.exceptions.SpotifyWebApiException;
 import se.michaelthelin.spotify.model_objects.credentials.ClientCredentials;
 import se.michaelthelin.spotify.model_objects.specification.Recommendations;
@@ -30,6 +31,7 @@ import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
 import javax.swing.text.html.Option;
 import java.awt.*;
 import java.io.IOException;
+import java.net.URI;
 import java.util.*;
 import java.util.List;
 import java.util.concurrent.BlockingQueue;
@@ -40,9 +42,11 @@ public class CommandManager extends ListenerAdapter {
     private static final Dotenv config = Dotenv.configure().load();
     private static final String clientId = config.get("CLIENT_ID");
     private static final String clientSecret = config.get("CLIENT_SECRET");
+    private static final URI redirectUri = SpotifyHttpManager.makeUri("https://accounts.spotify.com/authorize");
     private static final SpotifyApi spotifyApi = new SpotifyApi.Builder()
             .setClientId(clientId)
             .setClientSecret(clientSecret)
+            .setRedirectUri(redirectUri)
             .build();
     private static ClientCredentialsRequest clientCredentialsRequest = spotifyApi.clientCredentials()
             .build();
@@ -104,9 +108,9 @@ public class CommandManager extends ListenerAdapter {
     public void onGuildReady(GuildReadyEvent event) {
         List<CommandData> commandData = new ArrayList<>();
         //recommend command
-        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
-        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
-                .addOptions(genre));
+//        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
+//        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
+//                .addOptions(genre));
         //play command
         OptionData track = new OptionData(OptionType.STRING, "song", "URL, link, or name of the song you wish to play", true);
         commandData.add(Commands.slash("play", "play a song")
@@ -142,15 +146,15 @@ public class CommandManager extends ListenerAdapter {
         //assigning default channel for daily song event
         dailyAlertChannelId = event.getGuild().getDefaultChannel().getIdLong();
         //Daily event for sending the song of the day
-        Timer timer = new Timer();
-        TimerTask task = new TimerTask() {
-            @Override
-            public void run() {
-                dailySong(event);
-            }
-        };
-        Date today = new Date();
-        timer.scheduleAtFixedRate(task, new Date(today.getYear(), today.getMonth(), today.getDate(), 9, 0), 86400000);
+//        Timer timer = new Timer();
+//        TimerTask task = new TimerTask() {
+//            @Override
+//            public void run() {
+//                dailySong(event);
+//            }
+//        };
+//        Date today = new Date();
+//        timer.scheduleAtFixedRate(task, new Date(today.getYear(), today.getMonth(), today.getDate(), 9, 0), 86400000);
     }
 
     //Command functions-----------------------------------------------------------------------------------------
