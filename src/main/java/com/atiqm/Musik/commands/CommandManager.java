@@ -6,7 +6,6 @@ import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import io.github.cdimascio.dotenv.Dotenv;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
-import net.dv8tion.jda.api.entities.Invite;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
 import net.dv8tion.jda.api.events.guild.GuildReadyEvent;
@@ -27,9 +26,6 @@ import se.michaelthelin.spotify.model_objects.specification.Recommendations;
 import se.michaelthelin.spotify.model_objects.specification.TrackSimplified;
 import se.michaelthelin.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
-
-import javax.swing.text.html.Option;
-import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
@@ -40,6 +36,7 @@ import java.util.concurrent.ThreadLocalRandom;
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
     private static final Dotenv config = Dotenv.configure().load();
+    //TODO: create webhooks for formatting output to make it look even nicer
     private static final String clientId = config.get("CLIENT_ID");
     private static final String clientSecret = config.get("CLIENT_SECRET");
     private static final URI redirectUri = SpotifyHttpManager.makeUri("https://accounts.spotify.com/authorize");
