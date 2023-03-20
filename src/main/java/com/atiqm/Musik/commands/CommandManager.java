@@ -62,9 +62,11 @@ public class CommandManager extends ListenerAdapter {
             "summer", "swedish", "synth-pop", "tango", "techno", "trance", "trip-hop", "turkish", "work-out", "world-music"));
     //Channel for daily song output
     private static long dailyAlertChannelId;
-    //backticks for formatted output
+    //backticks and bold for formatted output
     private static final String blockQuote = ">>> ";
     private static final String bold = "**";
+    //commandList
+    private static List<CommandData> commandData = new ArrayList<>();
     public static void clientCredentials() {
         try {
             ClientCredentials clientCredentials = clientCredentialsRequest.execute();
@@ -98,12 +100,12 @@ public class CommandManager extends ListenerAdapter {
             case "queue" -> queue(event);
             case "loop" -> loop(event);
             case "sac" -> setAlertsChannel(event);
+            case "help" -> help(event);
         }
     }
     //Registering commands-------------------------------------------------------------------------------
     @Override
     public void onGuildReady(GuildReadyEvent event) {
-        List<CommandData> commandData = new ArrayList<>();
         //recommend command
 //        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
 //        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
@@ -132,16 +134,21 @@ public class CommandManager extends ListenerAdapter {
         for(TextChannel c : channels){
             choices.add(new Command.Choice(c.getName(), c.getId()));
         }
+        //TODO: Make it so that person has to enter the text value of channel name rather than listing all cahnnels due to option limit
         OptionData channel = new OptionData(OptionType.STRING, "channel", "channel you would like Musik to send all his daily alerts in.", true)
                 .addChoices(choices);
         commandData.add(Commands.slash("sac", "Pick the channel to have Musik output his daily recommendations.")
                 .addOptions(channel));
+        //TODO: not showing up, adjust and debug
+        // help command
+        commandData.add(Commands.slash("help", "view the list of commands that Musik has."));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
         //spotify api connection
         clientCredentials();
         //assigning default channel for daily song event
         dailyAlertChannelId = event.getGuild().getDefaultChannel().getIdLong();
+        //TODO: fix spotifyAPI request call / change API
         //Daily event for sending the song of the day
 //        Timer timer = new Timer();
 //        TimerTask task = new TimerTask() {
@@ -288,6 +295,15 @@ public class CommandManager extends ListenerAdapter {
     public void setAlertsChannel(SlashCommandInteractionEvent event){
         dailyAlertChannelId = event.getOption("channel").getAsLong();
         event.reply(blockQuote + "Musik will now send all his daily alerts in " + event.getGuild().getTextChannelById(dailyAlertChannelId).getName()).queue();
+    }
+
+    public void help(SlashCommandInteractionEvent event){
+        String reply = blockQuote + bold + "COMMANDS:\n";
+        Iterator<CommandData> commands = commandData.iterator();
+        while(commands.hasNext()){
+            reply += "/" + commands.next().getName().trim();
+        }
+        event.reply(reply).setEphemeral(true).queue();
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
