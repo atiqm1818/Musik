@@ -65,8 +65,9 @@ public class CommandManager extends ListenerAdapter {
     //backticks and bold for formatted output
     private static final String blockQuote = ">>> ";
     private static final String bold = "**";
+    private static final String italics = "_";
     //commandList
-    private static List<CommandData> commandData = new ArrayList<>();
+
     public static void clientCredentials() {
         try {
             ClientCredentials clientCredentials = clientCredentialsRequest.execute();
@@ -106,6 +107,7 @@ public class CommandManager extends ListenerAdapter {
     //Registering commands-------------------------------------------------------------------------------
     @Override
     public void onGuildReady(GuildReadyEvent event) {
+        List<CommandData> commandData = new ArrayList<>();
         //recommend command
 //        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
 //        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
@@ -129,18 +131,10 @@ public class CommandManager extends ListenerAdapter {
         //loop command
         commandData.add(Commands.slash("loop", "loop the current track or stop the current loop"));
         //sac (set alerts channel) command
-        List<TextChannel> channels = event.getGuild().getTextChannels();
-        List<Command.Choice> choices = new ArrayList<>();
-        for(TextChannel c : channels){
-            choices.add(new Command.Choice(c.getName(), c.getId()));
-        }
-        //TODO: Make it so that person has to enter the text value of channel name rather than listing all cahnnels due to option limit
-        OptionData channel = new OptionData(OptionType.STRING, "channel", "channel you would like Musik to send all his daily alerts in.", true)
-                .addChoices(choices);
+        OptionData channel = new OptionData(OptionType.STRING, "channel", "channel you would like Musik to send all his daily alerts in.", true);
         commandData.add(Commands.slash("sac", "Pick the channel to have Musik output his daily recommendations.")
                 .addOptions(channel));
-        //TODO: not showing up, adjust and debug
-        // help command
+        //help command
         commandData.add(Commands.slash("help", "view the list of commands that Musik has."));
         //adding commands to bot
         event.getGuild().updateCommands().addCommands(commandData).queue();
@@ -293,22 +287,29 @@ public class CommandManager extends ListenerAdapter {
     }
 
     public void setAlertsChannel(SlashCommandInteractionEvent event){
-        dailyAlertChannelId = event.getOption("channel").getAsLong();
-        event.reply(blockQuote + "Musik will now send all his daily alerts in " + event.getGuild().getTextChannelById(dailyAlertChannelId).getName()).queue();
-    }
-
-    public void help(SlashCommandInteractionEvent event){
-        String reply = blockQuote + bold + "COMMANDS:\n";
-        Iterator<CommandData> commands = commandData.iterator();
-        while(commands.hasNext()){
-            reply += "/" + commands.next().getName().trim();
+        String search = event.getOption("channel").getAsString();
+        for(TextChannel textChannel : event.getGuild().getTextChannels()){
+            if(search.toLowerCase().trim().equals(textChannel.getName().toLowerCase())){
+                dailyAlertChannelId = event.getGuild().getTextChannelsByName(search.trim(), true).get(0).getIdLong();
+                event.reply(blockQuote + "Musik will now send all his daily alerts in " + event.getGuild().getTextChannelById(dailyAlertChannelId).getName()).queue();
+                return;
+            }
         }
+        event.reply(blockQuote + "Could not find channel with name: '" + search + "'").setEphemeral(true).queue();
+
+    }
+    public void help(SlashCommandInteractionEvent event){
+        String reply = blockQuote + bold + "COMMANDS:\n" + bold + italics;
+        List<Command> commands = event.getGuild().retrieveCommands().complete();
+        for(Command c : commands){
+            reply += "/" + c.getName().trim() + ": " + c.getDescription().trim() + "\n";
+        }
+        reply += italics;
         event.reply(reply).setEphemeral(true).queue();
     }
 
     //Spotify API Calls-----------------------------------------------------------------------------------------
     public String getRecs(String genre) {
-        //TODO: check to see if token is expired
 
         if(genre.equals("random")){
             genre = spotifyGenres.get(ThreadLocalRandom.current().nextInt(0, spotifyGenres.size()));
