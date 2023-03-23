@@ -18,7 +18,7 @@ public class Musik{
                 .directory("src/main/assets")
                 .filename(".env")
                 .load();
-        String token = config.get("TOKEN");
+        String token = config.get("TEST_BOT_TOKEN");
         DefaultShardManagerBuilder builder = DefaultShardManagerBuilder.createDefault(token)
                 .setStatus(OnlineStatus.ONLINE)
                 .setActivity(Activity.listening("some jammers"))

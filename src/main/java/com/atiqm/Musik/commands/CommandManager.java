@@ -5,6 +5,7 @@ import com.atiqm.Musik.lavaplayer.PlayerManager;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrack;
 import com.sedmelluq.discord.lavaplayer.track.AudioTrackInfo;
 import io.github.cdimascio.dotenv.Dotenv;
+import net.dv8tion.jda.api.EmbedBuilder;
 import net.dv8tion.jda.api.entities.GuildVoiceState;
 import net.dv8tion.jda.api.entities.Member;
 import net.dv8tion.jda.api.entities.channel.concrete.TextChannel;
@@ -26,6 +27,8 @@ import se.michaelthelin.spotify.model_objects.specification.Recommendations;
 import se.michaelthelin.spotify.model_objects.specification.TrackSimplified;
 import se.michaelthelin.spotify.requests.authorization.client_credentials.ClientCredentialsRequest;
 import se.michaelthelin.spotify.requests.data.browse.GetRecommendationsRequest;
+
+import java.awt.*;
 import java.io.IOException;
 import java.net.URI;
 import java.util.*;
@@ -62,11 +65,14 @@ public class CommandManager extends ListenerAdapter {
             "summer", "swedish", "synth-pop", "tango", "techno", "trance", "trip-hop", "turkish", "work-out", "world-music"));
     //Channel for daily song output
     private static long dailyAlertChannelId;
-    //backticks and bold for formatted output
+    //backticks, bold, and italics for formatted output
     private static final String blockQuote = ">>> ";
     private static final String bold = "**";
     private static final String italics = "_";
-    //commandList
+    //embed builder for message formatting
+    private static EmbedBuilder embedBuilder = new EmbedBuilder()
+            .setAuthor("Musik")
+            .setColor(Color.YELLOW);
 
     public static void clientCredentials() {
         try {
@@ -177,7 +183,8 @@ public class CommandManager extends ListenerAdapter {
         Member member = event.getMember();
         GuildVoiceState memberVoiceState = member.getVoiceState();
         if(!memberVoiceState.inAudioChannel()){
-            event.reply(blockQuote + "You need to be in a voice channel to run this command").setEphemeral(true).queue();
+            embedBuilder.setDescription("You need to be in a voice channel to run this command");
+            event.replyEmbeds(embedBuilder.build()).setEphemeral(true).queue();
             return;
         }
         //checking bots state of seeing if it is in a voice channel or not
@@ -188,7 +195,8 @@ public class CommandManager extends ListenerAdapter {
         }
         else{
             if(selfVoiceState.getChannel() != memberVoiceState.getChannel()){
-                event.reply(blockQuote + "You need to be in the same channel as the bot").setEphemeral(true).queue();
+                embedBuilder.setDescription("You need to be in the same channel as the bot");
+                event.replyEmbeds(embedBuilder.build()).setEphemeral(true).queue();
                 return;
             }
         }
