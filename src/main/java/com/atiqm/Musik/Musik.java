@@ -9,7 +9,13 @@ import net.dv8tion.jda.api.requests.GatewayIntent;
 import net.dv8tion.jda.api.sharding.DefaultShardManagerBuilder;
 import net.dv8tion.jda.api.sharding.ShardManager;
 import javax.security.auth.login.LoginException;
-
+/**
+ * Musik is an interactive music bot that can give you recommendations and keeps
+ * a server lively with daily song recommendations.It uses the JDA Java Wrapper
+ * class along with Spotify's API to do so.
+ *
+ * @author  Muhammad Atiq
+ */
 public class Musik{
     private final ShardManager shardManager;
     private final Dotenv config;

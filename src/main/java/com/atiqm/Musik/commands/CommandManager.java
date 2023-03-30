@@ -39,7 +39,6 @@ import java.util.concurrent.ThreadLocalRandom;
 public class CommandManager extends ListenerAdapter {
     //Spotify API connection
     private static final Dotenv config = Dotenv.configure().load();
-    //TODO: create webhooks for formatting output to make it look even nicer
     private static final String clientId = config.get("CLIENT_ID");
     private static final String clientSecret = config.get("CLIENT_SECRET");
     private static final URI redirectUri = SpotifyHttpManager.makeUri("https://accounts.spotify.com/authorize");
@@ -66,6 +65,7 @@ public class CommandManager extends ListenerAdapter {
     //Channel for daily song output
     private static long dailyAlertChannelId;
     //backticks, bold, and italics for formatted output
+    //TODO: create embeds for formatting output to make it look even nicer
     private static final String blockQuote = ">>> ";
     private static final String bold = "**";
     private static final String italics = "_";
@@ -79,7 +79,6 @@ public class CommandManager extends ListenerAdapter {
             ClientCredentials clientCredentials = clientCredentialsRequest.execute();
             // Set access token for further "spotifyApi" object usage
             spotifyApi.setAccessToken(clientCredentials.getAccessToken());
-
             System.out.println("Expires in: " + clientCredentials.getExpiresIn());
         } catch (IOException | SpotifyWebApiException | ParseException e) {
             System.out.println("Error: " + e.getMessage());
@@ -115,9 +114,9 @@ public class CommandManager extends ListenerAdapter {
     public void onGuildReady(GuildReadyEvent event) {
         List<CommandData> commandData = new ArrayList<>();
         //recommend command
-//        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
-//        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
-//                .addOptions(genre));
+        OptionData genre = new OptionData(OptionType.STRING, "genre", "The genre of music you want to be recommended or enter 'random' for a random recommendation", true);
+        commandData.add(Commands.slash("recommend", "get recommended music from a random or a specific genre")
+                .addOptions(genre));
         //play command
         OptionData track = new OptionData(OptionType.STRING, "song", "URL, link, or name of the song you wish to play", true);
         commandData.add(Commands.slash("play", "play a song")
@@ -161,7 +160,7 @@ public class CommandManager extends ListenerAdapter {
 //        timer.scheduleAtFixedRate(task, new Date(today.getYear(), today.getMonth(), today.getDate(), 9, 0), 86400000);
     }
 
-    //Command functions-----------------------------------------------------------------------------------------
+    //Command functions-------------------------------------------------------------------------------------------------
     public void recommend(SlashCommandInteractionEvent event){
         //switch case to check if user picked a genre
         OptionMapping option = event.getOption("genre");
@@ -216,6 +215,7 @@ public class CommandManager extends ListenerAdapter {
 
     public void pause(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        //pausing the song
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getPlayer().setPaused(true);
         event.reply(blockQuote + ":pause_button: Song paused").queue();
@@ -223,12 +223,14 @@ public class CommandManager extends ListenerAdapter {
 
     public void resume(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        //resuming song if one is paused
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().getPlayer().setPaused(false);
         event.reply(blockQuote + ":play_pause: Song resumed").queue();
     }
     public void clear(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        //clearing the queue and stopping current track
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         guildMusicManager.getTrackScheduler().setRepeating(false);
         guildMusicManager.getTrackScheduler().getQueue().clear();
@@ -238,6 +240,7 @@ public class CommandManager extends ListenerAdapter {
 
     public void nowPlaying(SlashCommandInteractionEvent event){
         checkVoiceState(event);
+        //fetch current playing track
         GuildMusicManager guildMusicManager = PlayerManager.get().getGuildMusicManager(event.getGuild());
         AudioTrackInfo info = guildMusicManager.getTrackScheduler().getPlayer().getPlayingTrack().getInfo();
         event.reply(blockQuote + "Now playing " + bold + info.title + bold).queue();
@@ -316,7 +319,7 @@ public class CommandManager extends ListenerAdapter {
         event.reply(reply).setEphemeral(true).queue();
     }
 
-    //Spotify API Calls-----------------------------------------------------------------------------------------
+    //Spotify API Calls-------------------------------------------------------------------------------------------------
     public String getRecs(String genre) {
 
         if(genre.equals("random")){
